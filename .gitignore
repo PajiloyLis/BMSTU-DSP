@@ -11,4 +11,7 @@ nir/slides/presentation.pdf
 *.snm
 *.sh
 *.nav
-letctions/
+lections/
+*.docx
+*/venv/
+*/__pycache__/*
