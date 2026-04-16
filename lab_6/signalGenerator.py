@@ -1,7 +1,15 @@
 from math import exp, sin, pi
 import numpy as np
 import timeit
+from enum import Enum
 
+class NoiseType(Enum):
+    IMPULSE = 1
+    GAUSS = 2
+    
+class FrequencyType(Enum):
+    HIGH = 1
+    LOW = 2
 
 class SignalGenerator:
     def __init__(self, x_min, x_max):
@@ -88,5 +96,73 @@ class SignalGenerator:
         conv = np.fft.ifft(conv_fft)
         conv_real=np.real(conv[:len_conv])
         return np.arange(len_conv)*dx+self.x_min*2, conv_real
+        
+    @staticmethod
+    def generateImpulseNoise(y, amp_ratio=0.5):
+        max_val = np.max(y)
+        y_count = len(y)
+        noise_cnt = np.random.randint(1, y_count//10)
+        noise_positions = np.random.choice(y_count, noise_cnt, False)
+        noise_amps = np.random.uniform(0, amp_ratio*max_val, noise_cnt)
+        noise = np.zeros(y_count, dtype=float)
+        noise[noise_positions]=noise_amps*np.sign(np.random.randn(noise_cnt))
+        return noise
     
+    @staticmethod
+    def generateGaussNoise(y, dx, sigma_f_rel):
+        len_y = len(y)
+        freq = np.fft.fftfreq(len_y, d = dx)
+        sigma_f = sigma_f_rel/(2.0*dx)
+        h = np.exp(-freq**2 / (2*sigma_f**2))
+        theta = np.random.uniform(-0.5, 0.5, len_y)
+        noise = np.fft.fft(theta*h)/np.sqrt(len_y)
+        noise_real = np.real(noise)
+        return noise_real
+    
+    @staticmethod
+    def applyNoise(y, noise_y):
+        return y+ noise_y
+    
+    @staticmethod
+    def applyButterworth(y, dx, cutoff, freq_type):
+        len_y = len(y)
+        B = cutoff * 1.0/(2.0*dx)
+        freq = np.fft.fftfreq(len_y, d = dx)
+        if freq_type == FrequencyType.HIGH:
+            with np.errstate(divide='ignore', invalid='ignore'):
+                H = 1/ (1+(B/freq)**4)
+                H[freq==0]=0
+        else:
+            H = 1/ (1+(freq/B)**4)
+
+        spectrum = np.fft.fft(y)
+        filtered_spectrum = spectrum*H
+        filtered_y = np.fft.ifft(filtered_spectrum).real
+        return filtered_y
+    
+    @staticmethod
+    def applyGauss(y, dx, sigma_filter_rel, freq_type):
+        len_y = len(y)
+        sigma_filter = sigma_filter_rel/(2.0*dx)
+        freq = np.fft.fftfreq(len_y, d = dx)
+        if freq_type == FrequencyType.HIGH:
+            H = 1-np.exp(-freq**2/sigma_filter**2)
+        else:
+            H = np.exp(-freq**2/sigma_filter**2)
+
+        spectrum = np.fft.fft(y)
+        filtered_spectrum = spectrum*H
+        filtered_y = np.fft.ifft(filtered_spectrum).real
+        return filtered_y
+    
+    @staticmethod
+    def applyWeiner(y, dx, noise_y):
+        spectrum_y = np.fft.fft(y)
+        spectrum_noise_y = np.fft.fft(noise_y)
+        abs_spectrum_y = np.abs(spectrum_y)
+        abs_spectrum_noise_y = np.abs(spectrum_noise_y)
+        h = 1-abs_spectrum_noise_y**2/(abs_spectrum_y**2+1e-6)
+        h = np.clip(h, 0, 1) 
+        filtered = np.fft.ifft(spectrum_y * h).real
+        return filtered
         
