@@ -13,110 +13,57 @@ class MainWindow(QMainWindow):
         loadUi('lab.ui', self)
         self.dx = self.dxdoubleSpinBox.value()
         self.sigma_input = self.gaussSigmaInputdoubleSpinBox.value()
-        self.sigma_f_input = self.Sigma_F_Input_doubleSpinBox.value()
+        self.delta = self.Sigma_F_Input_doubleSpinBox.value()
         self.sigma_output = self.gaussSigmaOutputdoubleSpinBox.value()
-        self.sigma_f_output = self.Sigma_F_Output_doubleSpinBox.value()
+        self.eps = self.Sigma_F_Output_doubleSpinBox.value()
         self.signalGenerator = SignalGenerator(-5., 5.)
         self.setupPlotWidget(self.Weiner_widget)
         self.dxdoubleSpinBox.valueChanged.connect(self.dxValueChangedHandler)
         self.gaussSigmaInputdoubleSpinBox.valueChanged.connect(self.gaussSigmaInputValueChangedHandler)
-        self.Sigma_F_Input_doubleSpinBox.valueChanged.connect(self.SigmaFValueChangedHandler)
-        self.gaussSigmaOutputdoubleSpinBox.valueChanged.connect(self.gaussSigmaInputValueChangedHandler)
-        self.Sigma_F_Output_doubleSpinBox.valueChanged.connect(self.SigmaFValueChangedHandler)
+        self.Sigma_F_Input_doubleSpinBox.valueChanged.connect(self.SigmaFInputValueChangedHandler)
+        self.gaussSigmaOutputdoubleSpinBox.valueChanged.connect(self.gaussSigmaOutputValueChangedHandler)
+        self.Sigma_F_Output_doubleSpinBox.valueChanged.connect(self.SigmaFOutputValueChangedHandler)
         
-    def gaussSigmaInputValueChangedHandler(self):
-        self.sigma = self.gaussSigmadoubleSpinBox.value()
-        
-        ideal_x, ideal_y = self.signalGenerator.generateDiscretGauss(self.sigma, self.dx)
-        
-        if self.noiseType == NoiseType.GAUSS:
-            noise_y = SignalGenerator.generateGaussNoise(ideal_y, self.dx, self.sigma_f)
-        else:
-            noise_y = SignalGenerator.generateImpulseNoise(ideal_y)
-            
-        result_y = SignalGenerator.applyNoise(ideal_y, noise_y)
-        
-        filtered_y = SignalGenerator.applyWeiner(result_y, self.dx, noise_y)
-        
-        PlotDrawer.drawPlotFourthLab((ideal_x, ideal_x, ideal_x), (ideal_y, result_y, filtered_y), self.Weiner_widget.figure, ("Полезный сигнал", "Результирующий сигнал", "Фильтрованный сигнал"), ("x", "u(x)"), "Фильтр Винера")
-        
-        self.Weiner_widget.canvas.draw()
         
     def dxValueChangedHandler(self):
         self.dx = self.dxdoubleSpinBox.value()
         
-        ideal_x, ideal_y = self.signalGenerator.generateDiscretGauss(self.sigma, self.dx)
+        self.Processing()
         
-        if self.noiseType == NoiseType.GAUSS:
-            noise_y = SignalGenerator.generateGaussNoise(ideal_y, self.dx, self.sigma_f)
-        else:
-            noise_y = SignalGenerator.generateImpulseNoise(ideal_y)
-            
-        result_y = SignalGenerator.applyNoise(ideal_y, noise_y)
+    def gaussSigmaInputValueChangedHandler(self):
+        self.sigma_input = self.gaussSigmaInputdoubleSpinBox.value()
+        self.Processing()
         
-        filtered_y = SignalGenerator.applyWeiner(result_y, self.dx, noise_y)
+    def SigmaFInputValueChangedHandler(self):
+        self.delta = self.Sigma_F_Input_doubleSpinBox.value()
+        self.Processing()
         
-        PlotDrawer.drawPlotFourthLab((ideal_x, ideal_x, ideal_x), (ideal_y, result_y, filtered_y), self.Weiner_widget.figure, ("Полезный сигнал", "Результирующий сигнал", "Фильтрованный сигнал"), ("x", "u(x)"), "Фильтр Винера")
+    def gaussSigmaOutputValueChangedHandler(self):
+        self.sigma_output = self.gaussSigmaOutputdoubleSpinBox.value()
+        self.Processing()
         
-        self.Weiner_widget.canvas.draw()
+    def SigmaFOutputValueChangedHandler(self):
+        self.eps = self.Sigma_F_Output_doubleSpinBox.value()
+        self.Processing()
         
-    def SigmaFValueChangedHandler(self):
-        self.sigma_f = self.Sigma_F_doubleSpinBox.value()
-        
-        ideal_x, ideal_y = self.signalGenerator.generateDiscretGauss(self.sigma, self.dx)
-        
-        noise_y = SignalGenerator.generateGaussNoise(ideal_y, self.dx, self.sigma_f)
-            
-        result_y = SignalGenerator.applyNoise(ideal_y, noise_y)
-        
-        filtered_y = SignalGenerator.applyWeiner(result_y, self.dx, noise_y)
-        
-        PlotDrawer.drawPlotFourthLab((ideal_x, ideal_x, ideal_x), (ideal_y, result_y, filtered_y), self.Weiner_widget.figure, ("Полезный сигнал", "Результирующий сигнал", "Фильтрованный сигнал"), ("x", "u(x)"), "Фильтр Винера")
-        
-        self.Weiner_widget.canvas.draw()
-        
-    def GaussNoiseSelected(self):
-        self.Sigma_F_doubleSpinBox.setEnabled(True)
-        self.noiseType = NoiseType.GAUSS
-        
-        ideal_x, ideal_y = self.signalGenerator.generateDiscretGauss(self.sigma, self.dx)
-        
-        noise_y = SignalGenerator.generateGaussNoise(ideal_y, self.dx, self.sigma_f)
-            
-        result_y = SignalGenerator.applyNoise(ideal_y, noise_y)
-        
-        filtered_y = SignalGenerator.applyWeiner(result_y, self.dx, noise_y)
-        
-        PlotDrawer.drawPlotFourthLab((ideal_x, ideal_x, ideal_x), (ideal_y, result_y, filtered_y), self.Weiner_widget.figure, ("Полезный сигнал", "Результирующий сигнал", "Фильтрованный сигнал"), ("x", "u(x)"), "Фильтр Винера")
-        
-        self.Weiner_widget.canvas.draw()
-        
-    def ImpulseNoiseSelected(self):
-        self.Sigma_F_doubleSpinBox.setEnabled(False)
-        self.noiseType=NoiseType.IMPULSE
-        
-        ideal_x, ideal_y = self.signalGenerator.generateDiscretGauss(self.sigma, self.dx)
-        
-        noise_y = SignalGenerator.generateImpulseNoise(ideal_y)
-            
-        result_y = SignalGenerator.applyNoise(ideal_y, noise_y)
-        
-        filtered_y = SignalGenerator.applyWeiner(result_y, self.dx, noise_y)
-        
-        PlotDrawer.drawPlotFourthLab((ideal_x, ideal_x, ideal_x), (ideal_y, result_y, filtered_y), self.Weiner_widget.figure, ("Полезный сигнал", "Результирующий сигнал", "Фильтрованный сигнал"), ("x", "u(x)"), "Фильтр Винера")
-        
-        self.Weiner_widget.canvas.draw()
-        
+
     def Processing(self):
-        ideal_input_x, ideal_input_y = self.signalGenerator.generateDiscretGauss(self.sigma_f_input, self.dx)
-        noise_input_y = SignalGenerator.generateImpulseNoise(ideal_input_y, np.random.uniform(0.05, 0.1))
-        result_input_y = SignalGenerator.applyNoise(ideal_input_y, noise_input_y)
+        ideal_input_x, ideal_input_y = self.signalGenerator.generateDiscretGauss(self.sigma_input, self.dx)
+        noise_input_y = SignalGenerator.generateImpulseNoise(ideal_input_y, self.delta)
+        result_input_y_real = SignalGenerator.applyNoise(ideal_input_y, noise_input_y)
+        result_input_y = SignalGenerator.removeTwinsTransform(ideal_input_x, result_input_y_real)
         
-        ideal_output_x, ideal_output_y = self.signalGenerator.generateDiscretGauss(self.sigma_f_output, self.dx)
-        noise_output_y = SignalGenerator.generateImpulseNoise(ideal_output_y, np.random.uniform(0.05, 0.1))
-        result_output_y = SignalGenerator.applyNoise(ideal_output_y, noise_output_y)
+        ideal_output_x, ideal_output_y = self.signalGenerator.generateDiscretGauss(self.sigma_output, self.dx)
+        noise_output_y = SignalGenerator.generateImpulseNoise(ideal_output_y, self.eps)
+        result_output_y_real = SignalGenerator.applyNoise(ideal_output_y, noise_output_y)
+        result_output_y = SignalGenerator.removeTwinsTransform(ideal_output_x, result_output_y_real)
         
+        alpha = self.signalGenerator.compute_alpha(result_input_y, result_output_y, self.dx, self.delta, self.eps)
+        h_x, h, _ = self.signalGenerator.regularizationTikhonov(result_input_y, result_output_y, self.dx, alpha)
         
+        PlotDrawer.drawPlotFourthLab((ideal_input_x, ideal_output_x, h_x), (result_input_y_real, result_output_y_real, h), self.Weiner_widget.figure, ("Входной сигнал", "Выходной сигнал", "Функция импульсного отклика"), ("x", "u(x)"), "Регуляризация Тихонова")
+        
+        self.Weiner_widget.canvas.draw()
         
     def setupPlotWidget(self, container):
         figure = Figure()

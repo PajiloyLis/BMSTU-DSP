@@ -101,10 +101,9 @@ class SignalGenerator:
     def generateImpulseNoise(y, amp_ratio=0.5):
         max_val = np.max(y)
         y_count = len(y)
-        noise_cnt = np.random.randint(1, y_count)
         noise_amps = np.random.uniform(0, amp_ratio*max_val, y_count)
         noise = np.zeros(y_count, dtype=float)
-        noise=noise_amps*np.sign(np.random.randn(noise_cnt))
+        noise=noise_amps*np.sign(np.random.randn(y_count))
         return noise
     
     @staticmethod
@@ -166,10 +165,54 @@ class SignalGenerator:
         return filtered
     
     @staticmethod
-    def regularizationTikhonov(y_input, y_output, dx):
+    def regularizationTikhonov(y_input, y_output, dx, alpha):
         len_y = len(y_input)
         y_input_spec = np.fft.fft(y_input)
         y_output_spec = np.fft.fft(y_output)
         freq = np.fft.fftfreq(len_y, dx)
+        numerator = np.conj(y_input_spec)*y_output_spec
+        denominator = (np.abs(y_output_spec)**2)*(dx**2)+alpha*(1+(2*np.pi*freq)**2)
+        h_spec = numerator/(denominator+1e-9)
+        h = np.fft.ifft(h_spec).real*dx
+        h = np.fft.fftshift(h)
+        x = np.arange(len_y)*dx-(len_y)*dx/2
+        return x, h, h_spec
+    
+    @staticmethod
+    def compute_gamma_betta(y_input, y_output, dx, alpha):
+        len_y = len(y_input)
+        y_input_spec = np.fft.fft(y_input)
+        y_output_spec = np.fft.fft(y_output)
+        freq = np.fft.fftfreq(len_y, dx)
+        denominator = (np.abs(y_output_spec)**2)*(dx**2)+alpha*(1+(2*np.pi*freq)**2)
+        gamma_numerator = (np.abs(y_input_spec)**2)*(dx**2)*(1+(np.pi*2*freq)**2)
+        beta_numerator = (alpha**2)*(1+(2*np.pi*freq)**2)*(np.abs(y_input_spec)**2)
+        gamma = (dx/len_y)*np.sum(gamma_numerator/(denominator+1e-9))
+        beta = (dx/len_y)*np.sum(beta_numerator/(denominator+1e-9))
+        return gamma, beta
+    
+    @staticmethod
+    def compute_equation(y_input, y_output, dx, alpha, delta, eps):
+        gamma, betta = SignalGenerator.compute_gamma_betta(y_input, y_output, dx, alpha)
+        return betta - (delta+eps*np.sqrt(gamma))**2
+    
+    @staticmethod
+    def compute_alpha(y_input, y_output, dx, delta, eps, alpha_min = 1e-8, alpha_max = 1e3, accuracy=1e-9):
+        delta *= np.max(y_input)
+        eps *= np.max(y_output)
+        f_min = SignalGenerator.compute_equation(y_input, y_output, dx, alpha_min, delta, eps)
+        f_max = SignalGenerator.compute_equation(y_input, y_output, dx, alpha_max, delta, eps)
+        
+        if f_min*f_max > 0:
+            return alpha_max if f_min < 0 else alpha_min
         
         
+        while(np.abs(alpha_min-alpha_max) >= accuracy):
+            mid = (alpha_max+alpha_min)/2
+            f_mid = SignalGenerator.compute_equation(y_input, y_output, dx, mid, delta, eps)
+            if f_mid > 0:
+                alpha_max=mid
+            else:
+                alpha_min = mid
+        return (alpha_max+alpha_min)/2
+                
