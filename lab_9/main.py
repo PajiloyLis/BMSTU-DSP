@@ -120,9 +120,13 @@ class MainWindow(QMainWindow):
                     d = self.spinBox_length.value()
                     angle = self.spinBox_angle.value()
                 self.psf = ip.create_motion_blur_psf(self.input_image.shape, d, angle)
+                if auto:
+                    K = ip.estimate_wiener_k(self.psf)
+                    self.spinBox_K.setValue(K)
 
             else:  # Дефокусировка
                 if auto:
+                    K = None
                     cep = ip.compute_cepstrum(self.input_image)
                     r = ip.estimate_defocus_radius(cep)
                     self.spinBox_radius.blockSignals(True)
@@ -131,10 +135,15 @@ class MainWindow(QMainWindow):
                 else:
                     r = self.spinBox_radius.value()
                 self.psf = ip.create_defocus_psf(self.input_image.shape, r)
+                if auto:
+                    K = ip.estimate_wiener_k(self.psf)
+                    self.spinBox_K.setValue(K)
 
             # --- Восстановление ---
             self.restored_image = ip.wiener_deconvolution(self.input_image, self.psf, K=K)
-
+            # self.restore_image = ip.richardson_lucy_deconvolution(self.input_image, self.psf)
+            restored = self.restored_image
+            self.restored = (restored - np.min(restored)) / (np.max(restored) - np.min(restored))
             # --- Отображение результата ---
             ax = self.widget_output.figure.axes[0]
             ax.clear()
